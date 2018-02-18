@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Recording Audio</title>
+    <style media="screen">
+        body {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background: #EB3349;
+            font-family: avenir;
+            /* fallback for old browsers */
+            background: -webkit-linear-gradient(to right, #F45C43, #EB3349);
+            /* Chrome 10-25, Safari 5.1-6 */
+            background: linear-gradient(to right, #F45C43, #EB3349);
+            /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+        }
+
+        .main-div {
+            width: 60%;
+            margin: 2% auto;
+            font-family: palatino;
+        }
+
+        .individual-divs {
+            margin: 1% auto;
+            background: #ffffff;
+            padding: 1% 0;
+        }
+
+        .startRecordBtn {
+            width: 170px;
+            height: 170px;
+            border-radius: 100px;
+            margin: 4% 2%;
+            font-size: 1.2em;
+            cursor: pointer;
+            background: olivedrab;
+            color: white;
+            border: 1px solid olivedrab;
+            font-family: avenir;
+            box-shadow: 3px 9px 3px 3px #333300;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .startRecordBtn:hover {
+            background: #88a44e;
+            border: 1px solid #88a44e;
+        }
+
+        .startRecordBtn:focus {
+            outline: none;
+            box-shadow: none;
+            box-shadow: 2px 4px 2px 2px #333300;
+        }
+
+        .startRecordBtn:disabled {
+            background: #939393;
+            border: 1px solid #939393;
+            cursor: auto;
+            color: #666666;
+            box-shadow: none;
+        }
+
+        .stopRecordBtn {
+            width: 170px;
+            height: 170px;
+            border-radius: 100px;
+            margin: 4% 2%;
+            font-size: 1.2em;
+            cursor: pointer;
+            background: olivedrab;
+            color: white;
+            border: 1px solid olivedrab;
+            font-family: avenir;
+            box-shadow: 3px 9px 3px 3px #333300;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .stopRecordBtn:hover {
+            background: #88a44e;
+            border: 1px solid #88a44e;
+        }
+
+        .stopRecordBtn:focus {
+            outline: none;
+            box-shadow: none;
+            box-shadow: 2px 4px 2px 2px #333300;
+        }
+
+        .stopRecordBtn:disabled {
+            background: #939393;
+            border: 1px solid #939393;
+            cursor: auto;
+            color: #666666;
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+
+
+<body>
+
+    <!-- Main HTML -->
+    <button type="button" class="startRecordBtn">Record</button>
+    <button type="button" class="stopRecordBtn">Finish</button>
+    <div class="main-div"></div>
+
+
+    <!--  templating with mustacheJS-->
+    <script type="text/template" id="mytemplate">
+        <div class="individual-divs">
+            <p>{{clipName}}</p>
+            <a href="{{clipURL}}" download type="audio/mpeg">Download this file</a>
+            <audio src="{{clipURL}}" controls class="audioBtn"></audio>
+        </div>
+    </script>
+
+
+
+    <!-- CDN Reference for Mustache -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.min.js"></script>
+
+
+
+    <!-- Link to the main Script File -->
+    <!-- <script type="text/javascript" src="script.js"></script> -->
+    <script type="text/javascript">
+        const startRecordBtn = document.querySelector(".startRecordBtn");
+        const stopRecordBtn = document.querySelector(".stopRecordBtn");
+        const mainDiv = document.querySelector(".main-div");
+        var mytemplate = document.getElementById("mytemplate").innerHTML;
+
+        // checking if broswer supports getUserMedia method
+        if (navigator.mediaDevices.getUserMedia) {
+            console.log("navigator available! Yippee!");
+
+            navigator.mediaDevices.getUserMedia({
+                audio: true
+            }).then(function(stream) {
+
+                // creating new instance of media recorder
+                var mediaRecorder = new MediaRecorder(stream);
+
+                // using the new instance of media recorder to start recording
+                startRecordBtn.addEventListener("click", function() {
+                    mediaRecorder.start(); //pass arg 10ms for new blob per 10ms
+                    console.log("recording audio has begun!");
+                    console.log(mediaRecorder.state); //indicates active
+                    startRecordBtn.disabled = true;
+                    startRecordBtn.innerHTML = "Recording...";
+                    stopRecordBtn.disabled = false;
+                });
+
+                var chunks = [];
+                // this event actually runs right at the end when we stop recording
+                mediaRecorder.addEventListener("dataavailable", function(e) {
+                    chunks.push(e.data);
+                    console.log("data is available, now adding data to chunks");
+                    console.log(mediaRecorder.state);
+                });
+
+                // This is how we stop the recording
+                stopRecordBtn.addEventListener("click", function() {
+                    mediaRecorder.stop();
+                    console.log("recording has stopped");
+                    stopRecordBtn.disabled = true;
+                    startRecordBtn.disabled = false;
+                    startRecordBtn.innerHTML = "Record Again";
+                });
+                // type: "audio/ogg; codecs=opus"
+                // this is what the media recorder is asked to do after stopping
+                // this also has all variables used by dataavailable event above
+                mediaRecorder.addEventListener("stop", function() {
+                    var clipName = prompt("Provide a clip name for your recording");
+                    var myblob = new Blob(chunks, {
+                        type: "audio/mpeg"
+                    });
+                    console.log("the blob type is: ", myblob.type);
+                    var clipURL = window.URL.createObjectURL(myblob); //creating temporary url in the browser to work for
+
+                    var output = Mustache.render(mytemplate, {
+                        clipName: clipName,
+                        clipURL: clipURL
+                    });
+                    // use insertadjacenthtml here to insert output
+                    mainDiv.insertAdjacentHTML("beforeend", output);
+                });
+
+            }).catch(function(err) {
+                console.log("An error occured: ", err);
+                alert(err.name); //gives an elaborate version of the error
+            });
+
+
+        } else {
+            console.log("navigator method is unavailable in your browser");
+            alert("navigator method is unavailable in your browser");
+        }
+    </script>
+
+</body>
+
+</html>
